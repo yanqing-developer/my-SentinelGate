@@ -1,0 +1,15 @@
+{
+    "error":{"code":null,"message":null,"requestId":null},
+    "code":{
+        "400":"VALIDATION_ERROR",
+        "404":"NOT_FOUND",
+        "500":"ILLEGAL_STATE_TRANSITION"
+    },
+    "message":{
+        "400":"INVALID STATUS",
+        "404":"NOT FOUND",
+        "500":"INVALID TRANSITION"
+    },
+    "requestedId":"example-001"
+    
+}
