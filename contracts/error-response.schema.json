@@ -1,15 +1,19 @@
 {
-    "error":{"code":null,"message":null,"requestId":null},
-    "code":{
-        "400":"VALIDATION_ERROR",
-        "404":"NOT_FOUND",
-        "500":"ILLEGAL_STATE_TRANSITION"
-    },
-    "message":{
-        "400":"INVALID STATUS",
-        "404":"NOT FOUND",
-        "500":"INVALID TRANSITION"
-    },
-    "requestedId":"example-001"
-    
+    "$schema":"http://json-schema.org/draft-07/schema#",
+    "title": "ErrorResponse",
+    "type":"object",
+    "required": ["error"],
+    "additionalProperties": false,
+    "properties": {
+        "error":{
+            "type":"object",
+            "required": ["code","message"],
+            "additionalProperties": false,
+            "properties": {
+                "code":{"type":"string"},
+                "message":{"type":"string"},
+                "requestId":{"type":"string"}
+            }
+        }
+    }
 }

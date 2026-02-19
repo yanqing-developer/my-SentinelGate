@@ -1,4 +1,4 @@
-## We have two Id which is for all this systhem
+## ID Conventions
 
-caseId:uuid;
-jobId:uuid;
+caseId:UUID v4 string;
+jobId:UUID v4 string;
