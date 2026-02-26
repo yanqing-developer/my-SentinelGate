@@ -13,7 +13,8 @@
          "if": {"properties": {"status":{"const":"FAILED"}},"required": ["status"]},
          "then": {"required": ["error"],"properties": {"result":{"type":"null"}}}
       }
-   ],                      
+   ],   
+                      
    "properties": {
       "jobId":{
          "type":"string"
