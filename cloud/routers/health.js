@@ -1,6 +1,3 @@
-import { timeStamp } from "console";
-import { uptime } from "process";
-
 export function healthCheck(res,req){
     res.status(200).json(
         {
