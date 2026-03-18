@@ -1,10 +1,10 @@
-import { createScanJob } from "../models/scan-job";
-import { saveJob } from "../store/job-store";
-import { getJobById } from "../store/job-store";
-import { JOBSTATUS } from "../utils/job-status";
-import { controlTransitions } from "../utils/job-status";
+import { createScanJob } from "../models/scan-job.js";
+import { saveJob } from "../store/job-store.js";
+import { getJobById } from "../store/job-store.js";
+import { JOBSTATUS } from "../utils/job-status.js";
+import { controlTransitions } from "../utils/job-status.js";
 // import { controlStatus } from "../utils/job-status";
-import { updateJob } from "../store/job-store";
+import { updateJob } from "../store/job-store.js";
 
 
 export const createJob=(input)=>{
@@ -13,6 +13,10 @@ export const createJob=(input)=>{
     return job;
 }
 
+export const getJob=(id)=>{
+    const job=getJobById(id);
+    return job;
+}
 
 const updateFn=(nextStatus)=>{
     return (currentJob)=>{
@@ -29,6 +33,9 @@ const updateFn=(nextStatus)=>{
 
 export const startJob=(id)=>{
     const currentJob=getJobById(id);
+    if(!currentJob){
+        throw new Error("Job not found")
+    }
     const status=currentJob.status;
     const nextStatus=controlTransitions(status,JOBSTATUS.RUNNING);
     const job=updateJob(id,updateFn(nextStatus));
@@ -37,20 +44,23 @@ export const startJob=(id)=>{
 
 export const completeJob=(id)=>{
     const currentJob=getJobById(id);
+    if(!currentJob){
+        throw new Error("Job not found");
+    }
     const status=currentJob.status;
     const nextStatus=controlTransitions(status,JOBSTATUS.DONE);
     const job=updateJob(id,updateFn(nextStatus));
     return job; 
 }
 
-const failUpdateJob=(error)=>{
+const failUpdateJob=(nextStatus,error)=>{
     return (currentJob)=>{
         if(!currentJob){
             throw new Error("Current job is required");
         }
         return {
             ...currentJob,
-            status:JOBSTATUS.FAILED,
+            status:nextStatus,
             error,
             updatedAt:new Date().toISOString()
         }
@@ -58,8 +68,12 @@ const failUpdateJob=(error)=>{
 }
 export const failJob=(id,error)=>{
     const currentJob=getJobById(id);
+    if(!currentJob){
+        throw new Error("Job not found");
+   }
     const status=currentJob.status;
     const nextStatus=controlTransitions(status,JOBSTATUS.FAILED);
-    const job=updateJob(id,failUpdateJob(error));
+    
+    const job=updateJob(id,failUpdateJob(nextStatus,error));
     return job;
 }
