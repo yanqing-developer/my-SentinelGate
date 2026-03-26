@@ -1,5 +1,8 @@
+import { randomUUID } from "node:crypto";
+
 const localBaseUrl = process.env.LOCAL_AGENT_URL || "http://127.0.0.1:3000";
 const cloudBaseUrl = process.env.CLOUD_PLATFORM_URL || "http://127.0.0.1:4000";
+const correlationId = process.env.CORRELATION_ID || randomUUID();
 
 const demoPayload = {
   rawText:
@@ -12,7 +15,8 @@ const run = async () => {
   const localResponse = await fetch(`${localBaseUrl}/api/scan-cases`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      "x-correlation-id": correlationId
     },
     body: JSON.stringify(demoPayload)
   });
@@ -27,7 +31,8 @@ const run = async () => {
   const cloudCreateResponse = await fetch(`${cloudBaseUrl}/api/scan-summaries`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      "x-correlation-id": correlationId
     },
     body: JSON.stringify(summaryPayload)
   });
@@ -38,7 +43,12 @@ const run = async () => {
 
   const cloudCreatePayload = await cloudCreateResponse.json();
   const cloudReadResponse = await fetch(
-    `${cloudBaseUrl}/api/scan-summaries/${cloudCreatePayload.record.id}`
+    `${cloudBaseUrl}/api/scan-summaries/${cloudCreatePayload.record.id}`,
+    {
+      headers: {
+        "x-correlation-id": correlationId
+      }
+    }
   );
 
   if (!cloudReadResponse.ok) {
@@ -50,6 +60,7 @@ const run = async () => {
   console.log(
     JSON.stringify(
       {
+        correlationId,
         localCaseId: localPayload.scanCase.id,
         localRiskLevel: localPayload.scanResult.riskLevel,
         summaryPayload,

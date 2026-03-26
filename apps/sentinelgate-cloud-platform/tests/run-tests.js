@@ -53,6 +53,29 @@ await run("happy-path ingestion stores a summary record", async () => {
   }
 });
 
+await run("cloud-platform sets and preserves correlation headers", async () => {
+  resetScanSummaryStore();
+  const server = createServer(cloudApp);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const generatedResponse = await fetch(`${baseUrl}/health`);
+    assert.ok(generatedResponse.headers.get("x-request-id"));
+
+    const providedId = "cloud-correlation-123";
+    const preservedResponse = await fetch(`${baseUrl}/health`, {
+      headers: {
+        "x-request-id": providedId
+      }
+    });
+
+    assert.equal(preservedResponse.headers.get("x-request-id"), providedId);
+    assert.equal(preservedResponse.headers.get("x-correlation-id"), providedId);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
 await run("ingestion rejects raw text fields", async () => {
   resetScanSummaryStore();
   const server = createServer(cloudApp);
@@ -127,19 +150,21 @@ await run("list and read APIs return stored records", async () => {
   }
 });
 
-await run("end-to-end flow moves a local cloudSafeSummary into cloud storage", async () => {
+await run("end-to-end flow preserves correlation id from local to cloud", async () => {
   resetScanDomainStore();
   resetScanSummaryStore();
   const localServer = createServer(localApp);
   const cloudServer = createServer(cloudApp);
   const localBaseUrl = `http://127.0.0.1:${localServer.address().port}`;
   const cloudBaseUrl = `http://127.0.0.1:${cloudServer.address().port}`;
+  const correlationId = "flow-correlation-123";
 
   try {
     const localResponse = await fetch(`${localBaseUrl}/api/scan-cases`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "x-correlation-id": correlationId
       },
       body: JSON.stringify({
         rawText: "Confidential salary review for passport holder jane@example.com 123456789",
@@ -148,24 +173,33 @@ await run("end-to-end flow moves a local cloudSafeSummary into cloud storage", a
     });
 
     const localPayload = await localResponse.json();
+    assert.equal(localResponse.headers.get("x-correlation-id"), correlationId);
     assert.equal("rawText" in localPayload.cloudSafeSummary, false);
 
     const cloudCreateResponse = await fetch(`${cloudBaseUrl}/api/scan-summaries`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "x-correlation-id": correlationId
       },
       body: JSON.stringify(localPayload.cloudSafeSummary)
     });
 
     assert.equal(cloudCreateResponse.status, 202);
+    assert.equal(cloudCreateResponse.headers.get("x-correlation-id"), correlationId);
     const cloudCreatePayload = await cloudCreateResponse.json();
 
     const cloudReadResponse = await fetch(
-      `${cloudBaseUrl}/api/scan-summaries/${cloudCreatePayload.record.id}`
+      `${cloudBaseUrl}/api/scan-summaries/${cloudCreatePayload.record.id}`,
+      {
+        headers: {
+          "x-correlation-id": correlationId
+        }
+      }
     );
     const cloudReadPayload = await cloudReadResponse.json();
 
+    assert.equal(cloudReadResponse.headers.get("x-correlation-id"), correlationId);
     assert.equal(cloudReadPayload.record.caseId, localPayload.scanCase.id);
     assert.equal(cloudReadPayload.record.riskLevel, localPayload.cloudSafeSummary.riskLevel);
     assert.equal("rawText" in cloudReadPayload.record, false);

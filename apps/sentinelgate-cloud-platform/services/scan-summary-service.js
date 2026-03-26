@@ -13,9 +13,19 @@ const createHttpError = (message, statusCode) => {
   return error;
 };
 
-export const ingestScanSummary = (payload) => {
+export const ingestScanSummary = (payload, requestContext) => {
   const validatedPayload = validateScanSummaryPayload(payload);
-  return saveScanSummaryRecord(createScanSummaryRecord(validatedPayload));
+  const record = saveScanSummaryRecord(createScanSummaryRecord(validatedPayload));
+
+  requestContext?.logger?.info("summary.accepted", {
+    recordId: record.id,
+    caseId: record.caseId,
+    riskLevel: record.riskLevel,
+    recommendation: record.recommendation,
+    detectedSignalCount: record.detectedSignals.length
+  });
+
+  return record;
 };
 
 export const getStoredScanSummary = (recordId) => {

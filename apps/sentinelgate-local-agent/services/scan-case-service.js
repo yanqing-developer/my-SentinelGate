@@ -26,8 +26,32 @@ const markScanCaseStatus = (scanCase, nextStatus) => ({
   updatedAt: new Date().toISOString()
 });
 
-export const createLocalScanCase = ({ rawText, sourceType = "text", immediateScan = false }) => {
+const buildSummary = (scanResult, requestContext) => {
+  const cloudSafeSummary = toCloudSafeSummary(scanResult);
+
+  requestContext?.logger?.info("scan.summary.built", {
+    caseId: scanResult.caseId,
+    riskLevel: cloudSafeSummary.riskLevel,
+    recommendation: cloudSafeSummary.recommendation,
+    detectedSignalCount: cloudSafeSummary.detectedSignals.length
+  });
+
+  return cloudSafeSummary;
+};
+
+export const createLocalScanCase = ({
+  rawText,
+  sourceType = "text",
+  immediateScan = false,
+  requestContext
+}) => {
   const scanCase = saveScanCase(createScanCase({ rawText, sourceType }));
+
+  requestContext?.logger?.info("scan_case.created", {
+    caseId: scanCase.id,
+    sourceType: scanCase.sourceType,
+    immediateScan
+  });
 
   if (!immediateScan) {
     return {
@@ -37,7 +61,7 @@ export const createLocalScanCase = ({ rawText, sourceType = "text", immediateSca
     };
   }
 
-  return scanExistingCase(scanCase.id);
+  return scanExistingCase(scanCase.id, requestContext);
 };
 
 export const getLocalScanCase = (caseId) => {
@@ -50,7 +74,7 @@ export const getLocalScanCase = (caseId) => {
   return toPublicScanCase(scanCase);
 };
 
-export const getLocalScanResult = (caseId) => {
+export const getLocalScanResult = (caseId, requestContext) => {
   const scanCase = getScanCaseById(caseId);
 
   if (!scanCase) {
@@ -65,11 +89,11 @@ export const getLocalScanResult = (caseId) => {
 
   return {
     scanResult,
-    cloudSafeSummary: toCloudSafeSummary(scanResult)
+    cloudSafeSummary: buildSummary(scanResult, requestContext)
   };
 };
 
-export const scanExistingCase = (caseId) => {
+export const scanExistingCase = (caseId, requestContext) => {
   const scanCase = getScanCaseById(caseId);
 
   if (!scanCase) {
@@ -79,6 +103,10 @@ export const scanExistingCase = (caseId) => {
   if (scanCase.status !== SCANCASESTATUS.DRAFT) {
     throw createHttpError("Scan case can only be scanned from DRAFT state.", 400);
   }
+
+  requestContext?.logger?.info("scan.started", {
+    caseId
+  });
 
   const scanningCase = updateScanCase(caseId, (currentScanCase) =>
     markScanCaseStatus(currentScanCase, SCANCASESTATUS.SCANNING)
@@ -100,10 +128,17 @@ export const scanExistingCase = (caseId) => {
       markScanCaseStatus(currentScanCase, SCANCASESTATUS.SCANNED)
     );
 
+    requestContext?.logger?.info("scan.completed", {
+      caseId,
+      riskLevel,
+      recommendation,
+      detectedSignalCount: detectedSignals.length
+    });
+
     return {
       scanCase: toPublicScanCase(scannedCase),
       scanResult,
-      cloudSafeSummary: toCloudSafeSummary(scanResult)
+      cloudSafeSummary: buildSummary(scanResult, requestContext)
     };
   } catch (error) {
     updateScanCase(caseId, (currentScanCase) => ({
@@ -111,6 +146,11 @@ export const scanExistingCase = (caseId) => {
       status: assertScanCaseTransition(currentScanCase.status, SCANCASESTATUS.FAILED),
       updatedAt: new Date().toISOString()
     }));
+
+    requestContext?.logger?.error("scan.failed", {
+      caseId,
+      error: error.message
+    });
 
     throw error;
   }

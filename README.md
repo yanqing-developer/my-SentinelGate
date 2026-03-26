@@ -11,6 +11,7 @@ This repository is organized as a minimal npm workspace monorepo. The current im
 - Runnable cloud platform service that accepts only cloud-safe summaries
 - Shared contracts package for boundary-safe schemas and small shared contract helpers
 - Demo-friendly end-to-end prototype flow from local scan summary to cloud record
+- Lightweight structured logs and request/correlation IDs in both services
 
 ## Monorepo Structure
 
@@ -31,6 +32,7 @@ This repository is organized as a minimal npm workspace monorepo. The current im
 - Handles raw text locally
 - Runs explainable rule-based scanning
 - Produces `cloudSafeSummary` payloads aligned to the shared contract
+- Emits structured logs without logging raw text
 
 ### `apps/sentinelgate-cloud-platform`
 
@@ -38,6 +40,7 @@ This repository is organized as a minimal npm workspace monorepo. The current im
 - Accepts only scan summary payloads aligned to the shared contract
 - Stores accepted summary records in memory
 - Does not accept or store raw text
+- Emits structured logs without logging forbidden content
 
 ### `packages/contracts`
 
@@ -69,6 +72,7 @@ This repository is organized as a minimal npm workspace monorepo. The current im
 - The repository currently uses JavaScript with Node.js and Express.
 - Both services are intentionally in-memory in this stage.
 - The project story is now: raw text stays local, local produces a contract-safe summary, cloud consumes only that summary.
+- Both services emit small structured logs with `x-request-id` / `x-correlation-id` handling.
 - A small demo helper script exists in the local agent to show the end-to-end summary flow against running services.
 
 ## Future Direction

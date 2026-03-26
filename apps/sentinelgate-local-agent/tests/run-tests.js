@@ -75,6 +75,33 @@ await run("cloudSafeSummary matches the shared contract fields", async () => {
   assert.equal("explanation" in summary.detectedSignals[0], false);
 });
 
+await run("local-agent sets and preserves correlation headers", async () => {
+  resetScanDomainStore();
+  const server = app.listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const generatedResponse = await fetch(`${baseUrl}/api/health`);
+    assert.ok(generatedResponse.headers.get("x-request-id"));
+    assert.equal(
+      generatedResponse.headers.get("x-request-id"),
+      generatedResponse.headers.get("x-correlation-id")
+    );
+
+    const providedId = "local-correlation-123";
+    const preservedResponse = await fetch(`${baseUrl}/api/health`, {
+      headers: {
+        "x-correlation-id": providedId
+      }
+    });
+
+    assert.equal(preservedResponse.headers.get("x-request-id"), providedId);
+    assert.equal(preservedResponse.headers.get("x-correlation-id"), providedId);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
 await run("scan-case API supports create and result flow", async () => {
   resetScanDomainStore();
 
