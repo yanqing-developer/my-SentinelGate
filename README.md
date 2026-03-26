@@ -1,238 +1,81 @@
 # SentinelGate
 
-**Privacy-First Pre-Upload Risk Analysis System**  
-Local/Cloud Separation - Async Job Processing - Strict State Machine - Contract-Driven Design
+SentinelGate is a privacy-first, local-first internal tool for detecting and tagging sensitive data before content leaves a trusted environment.
 
-Built with:
-- Cloud: Go
-- Local: TypeScript (Node.js)
+This repository is organized as a minimal npm workspace monorepo. The current implementation is an early foundation and prototype, not a full platform.
 
----
+## Current Maturity
 
-## Overview
+- Early foundation / prototype
+- Runnable local agent service
+- Runnable cloud platform placeholder service
+- Shared contracts package for boundary-safe schemas and docs
 
-SentinelGate models a real enterprise requirement:
+## Monorepo Structure
 
-Before uploading internal documents or content to external systems (cloud storage, SaaS platforms, AI tools, or third-party services), organizations must assess whether the data contains sensitive information.
-
-This project demonstrates a privacy-preserving backend architecture for:
-
-- Pre-upload risk assessment
-- Strict data boundary enforcement
-- Asynchronous analysis workflows
-- Contract-driven API design
-
-The focus is architectural correctness and production realism rather than feature volume.
-
----
-
-## Real-World Motivation
-
-Enterprises face increasing risks when sharing data externally:
-
-- Accidental leakage of personal identifiers
-- Exposure of confidential business information
-- Compliance violations (GDPR and internal governance policies)
-- Uncontrolled use of AI tools with sensitive data
-
-A safe workflow requires:
-
-1. Sensitive data to remain inside a trusted boundary
-2. External analysis services to operate without raw data access
-3. Non-blocking background processing
-4. Deterministic and auditable state transitions
-
-SentinelGate models this architecture in a minimal but production-minded way.
-
----
-
-## System Architecture
-
-Client  
-↓  
-Local Service (TypeScript / Node.js)  
-↓  
-Sends only non-sensitive signals  
-↓  
-Cloud Service (Go)
-
----
-
-### Local Service
-
-Responsibilities:
-
-- Stores sensitive case data
-- Extracts non-sensitive risk signals
-- Initiates analysis jobs in the Cloud
-- Maintains case-to-job mapping
-- Aggregates job status for clients
-
-Sensitive content never leaves this service.
-
-Examples of data stored locally:
-
-- rawContent
-- subjectName
-- email
-- internalNotes
-- file references
-
----
-
-### Cloud Service
-
-Responsibilities:
-
-- Executes long-running risk analysis jobs
-- Applies scoring rules to non-sensitive signals
-- Manages job lifecycle state
-- Returns structured risk summaries
-
-Cloud receives only:
-
-- caseId
-- Derived signal indicators
-- Non-sensitive metadata
-
-Cloud never receives raw content.
-
-The Cloud layer is implemented in Go to reflect production-oriented backend design where:
-
-- Concurrency and background execution matter
-- Explicit error handling is preferred
-- Job lifecycle management must be deterministic
-
----
-
-## Privacy Boundary
-
-The system enforces a strict trust separation.
-
-Cloud must never accept or return:
-
-- rawContent
-- subjectName
-- email
-- fileName
-- filePath
-- internalNotes
-- Any personally identifiable or business-sensitive field
-
-Cloud only processes:
-
-- caseId
-- Derived risk signals
-- Job status
-- Risk score
-- Risk level
-- Structured summary
-
-This boundary is architectural and encoded in JSON schema definitions.
-
----
-
-## Risk Analysis Model (Simplified)
-
-Each job produces a structured, non-sensitive result:
-
-- riskScore (0–100)
-- riskLevel (LOW - MEDIUM - HIGH)
-- detectedSignals (e.g. EMAIL_PATTERN, NUMERIC_ID_PATTERN)
-- recommendation (e.g. "Mask identifiers before upload")
-
-The scoring logic is intentionally simple to keep the focus on system architecture rather than machine learning complexity.
-
----
-
-## Job Lifecycle
-
-All jobs follow a strict state machine:
-
-PENDING → RUNNING → DONE  
-                 ↘ FAILED  
-
-Invalid transitions are rejected.
-
-Examples of illegal transitions:
-
-- DONE → RUNNING
-- FAILED → RUNNING
-- DONE → PENDING
-
-This models production-grade background processing integrity.
-
----
-
-## Async Processing Model
-
-SentinelGate uses a pull-based polling mechanism:
-
-1. POST /jobs → returns jobId
-2. GET /jobs/:jobId → retrieve job status
-
-Design choices:
-
-- No blocking HTTP requests
-- No long-running synchronous endpoints
-- Clear separation between submission and retrieval
-
----
-
-## Contract-Driven Development
-
-All external responses are defined using JSON Schema.
-
-Design principles:
-
-- additionalProperties: false
-- Explicit required fields
-- Enum-based constraints
-- Structured error responses
-- Privacy boundary encoded in structure
-
-Schemas are stored in `/contracts`.
-
----
-
-## Repository Structure
-
+```text
 .
-├── cloud/       - Go service (risk engine + job manager)
-├── local/       - TypeScript service (sensitive boundary)
-├── contracts/   - Shared JSON schemas
-└── README.md
+├── apps/
+│   ├── sentinelgate-local-agent/
+│   └── sentinelgate-cloud-platform/
+└── packages/
+    └── contracts/
+```
 
----
+## Service Responsibilities
 
-## Technical Highlights
+### `apps/sentinelgate-local-agent`
 
-- Explicit Local/Cloud trust separation
-- Zero raw data leakage to Cloud
-- Asynchronous background job processing
-- Strict state machine enforcement
-- Centralized error contract
-- Privacy boundary encoded in schema
-- Minimal but production-minded structure
+- Express service for local-first processing
+- Handles raw text locally
+- Owns the current job lifecycle prototype
+- Represents the trusted boundary where scan-oriented work happens
 
----
+### `apps/sentinelgate-cloud-platform`
 
-## Future Improvements
+- Express service for cloud-facing summary and audit workflows
+- Accepts only summary-oriented payloads in the current prototype
+- Does not accept raw text fields
+- Exists to make the cloud boundary explicit before larger platform features are added
 
-Potential extensions include:
+### `packages/contracts`
 
-- Persistent storage
-- Authentication and authorization
-- Message queues (Kafka or SQS)
-- Idempotent job submission
-- Observability (metrics and tracing)
-- Rate limiting
-- Audit logging
+- Shared JSON schemas and contract notes
+- Intended to define cloud-safe DTO and schema boundaries
+- Reinforces that raw text must not be part of cloud-bound payloads
 
----
+## Current Implementation Notes
 
-## Purpose
+- The repository currently uses JavaScript with Node.js and Express.
+- Earlier README text referenced TypeScript for the local service and Go for the cloud service. That is not the current implementation state.
+- If those migrations happen later, they should be treated as roadmap work rather than current reality.
 
-SentinelGate is built as an interview-ready backend engineering demonstration.
+## Current Endpoints
 
-It highlights architectural reasoning, privacy awareness, and system modeling over UI or feature breadth.
+### Local Agent
+
+- `GET /api/health`
+- `POST /api/jobs`
+- `GET /api/jobs/:id`
+- `POST /api/jobs/:id/start`
+- `POST /api/jobs/:id/complete`
+- `POST /api/jobs/:id/fail`
+
+### Cloud Platform
+
+- `GET /health`
+- `POST /api/scan-summaries`
+
+The cloud placeholder route accepts only summary-oriented fields and rejects obvious raw text fields.
+
+## Future Direction
+
+The intended direction remains:
+
+- stronger local scan modeling
+- explicit local-agent vs cloud-platform contracts
+- policy and audit domain models
+- async job workflows
+- observability and deployment workflows
+
+Those pieces are not yet implemented in this step.

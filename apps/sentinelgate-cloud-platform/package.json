@@ -1,0 +1,16 @@
+{
+  "name": "sentinelgate-cloud-platform",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal SentinelGate cloud platform for summary and audit-facing workflows.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node main.js",
+    "start": "node main.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}

@@ -1,6 +1,15 @@
 {
-  "dependencies": {
-    "dotenv": "^17.3.1",
-    "express": "^5.2.1"
+  "name": "sentinelgate",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:local": "npm run dev --workspace sentinelgate-local-agent",
+    "dev:cloud": "npm run dev --workspace sentinelgate-cloud-platform",
+    "start:local": "npm run start --workspace sentinelgate-local-agent",
+    "start:cloud": "npm run start --workspace sentinelgate-cloud-platform",
+    "test": "npm run test --workspaces --if-present"
   }
 }
