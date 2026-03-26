@@ -1,7 +1,8 @@
 # sentinelgate-cloud-platform
 
-This service is the cloud-side placeholder for SentinelGate.
+This service is the cloud-side receiver for SentinelGate scan summaries.
 
-- It accepts only summary-oriented payloads.
-- It must not accept raw text fields.
-- It is intentionally minimal in this stage and exists to make the cloud boundary explicit.
+- It accepts only cloud-safe summary payloads from the local agent.
+- It does not accept or store raw text.
+- Accepted summary records are kept in memory in this stage.
+- The current role is governance and reporting-safe ingestion, not full policy or audit workflow management.

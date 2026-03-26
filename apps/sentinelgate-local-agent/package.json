@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "node index.js",
     "start": "node index.js",
-    "test": "node --test"
+    "test": "node tests/run-tests.js"
   },
   "dependencies": {
     "dotenv": "^17.3.1",

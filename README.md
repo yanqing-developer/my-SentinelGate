@@ -2,13 +2,13 @@
 
 SentinelGate is a privacy-first, local-first internal tool for detecting and tagging sensitive data before content leaves a trusted environment.
 
-This repository is organized as a minimal npm workspace monorepo. The current implementation is an early foundation and prototype, not a full platform.
+This repository is organized as a minimal npm workspace monorepo. The current implementation is an early dual-service prototype, not a full platform.
 
 ## Current Maturity
 
-- Early foundation / prototype
-- Runnable local agent service
-- Runnable cloud platform placeholder service
+- Early dual-service foundation / prototype
+- Runnable local agent service with explainable local scanning
+- Runnable cloud platform service that accepts only cloud-safe summaries
 - Shared contracts package for boundary-safe schemas and docs
 
 ## Monorepo Structure
@@ -28,54 +28,54 @@ This repository is organized as a minimal npm workspace monorepo. The current im
 
 - Express service for local-first processing
 - Handles raw text locally
-- Owns the current job lifecycle prototype
-- Represents the trusted boundary where scan-oriented work happens
+- Runs explainable rule-based scanning
+- Produces `cloudSafeSummary` shapes without raw text
 
 ### `apps/sentinelgate-cloud-platform`
 
-- Express service for cloud-facing summary and audit workflows
-- Accepts only summary-oriented payloads in the current prototype
-- Does not accept raw text fields
-- Exists to make the cloud boundary explicit before larger platform features are added
+- Express service for cloud-facing governance and reporting-safe records
+- Accepts only scan summary payloads
+- Stores accepted summary records in memory
+- Does not accept or store raw text
 
 ### `packages/contracts`
 
 - Shared JSON schemas and contract notes
-- Intended to define cloud-safe DTO and schema boundaries
+- Defines the summary boundary between local and cloud
 - Reinforces that raw text must not be part of cloud-bound payloads
-
-## Current Implementation Notes
-
-- The repository currently uses JavaScript with Node.js and Express.
-- Earlier README text referenced TypeScript for the local service and Go for the cloud service. That is not the current implementation state.
-- If those migrations happen later, they should be treated as roadmap work rather than current reality.
 
 ## Current Endpoints
 
 ### Local Agent
 
 - `GET /api/health`
-- `POST /api/jobs`
-- `GET /api/jobs/:id`
-- `POST /api/jobs/:id/start`
-- `POST /api/jobs/:id/complete`
-- `POST /api/jobs/:id/fail`
+- `POST /api/scan-cases`
+- `POST /api/scan-cases/:id/scan`
+- `GET /api/scan-cases/:id`
+- `GET /api/scan-cases/:id/result`
+- Legacy job endpoints remain for compatibility only
 
 ### Cloud Platform
 
 - `GET /health`
 - `POST /api/scan-summaries`
+- `GET /api/scan-summaries`
+- `GET /api/scan-summaries/:id`
+- `GET /api/scan-summaries/case/:caseId`
 
-The cloud placeholder route accepts only summary-oriented fields and rejects obvious raw text fields.
+## Current Implementation Notes
+
+- The repository currently uses JavaScript with Node.js and Express.
+- Both services are intentionally in-memory in this stage.
+- The project story is now: raw text stays local, cloud receives only safe summaries.
 
 ## Future Direction
 
 The intended direction remains:
 
-- stronger local scan modeling
-- explicit local-agent vs cloud-platform contracts
-- policy and audit domain models
-- async job workflows
+- stronger policy and governance modeling
+- richer cloud-side audit/reporting workflows
+- persistent storage
 - observability and deployment workflows
 
 Those pieces are not yet implemented in this step.

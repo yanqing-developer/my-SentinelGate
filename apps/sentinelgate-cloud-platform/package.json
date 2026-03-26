@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "node main.js",
     "start": "node main.js",
-    "test": "node --test"
+    "test": "node tests/run-tests.js"
   },
   "dependencies": {
     "express": "^5.2.1"

@@ -3,7 +3,7 @@
   "title": "ScanSummaryRequest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["caseId", "detectedSignals", "riskLevel"],
+  "required": ["caseId", "detectedSignals", "riskLevel", "recommendation"],
   "properties": {
     "caseId": {
       "type": "string"
@@ -11,12 +11,33 @@
     "detectedSignals": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "ruleId", "label", "severity"],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "ruleId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["LOW", "MEDIUM", "HIGH"]
+          }
+        }
       }
     },
     "riskLevel": {
       "type": "string",
       "enum": ["LOW", "MEDIUM", "HIGH"]
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": ["ALLOW", "WARN", "BLOCK"]
     }
   }
 }
