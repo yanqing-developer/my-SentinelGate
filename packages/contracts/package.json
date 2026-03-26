@@ -2,9 +2,11 @@
   "name": "@sentinelgate/contracts",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Shared SentinelGate DTO and schema contracts.",
   "files": [
     "*.json",
-    "*.md"
+    "*.md",
+    "*.js"
   ]
 }

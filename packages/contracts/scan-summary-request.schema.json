@@ -1,12 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ScanSummaryRequest",
+  "description": "Cloud-safe scan summary payload sent from the local agent to the cloud platform.",
   "type": "object",
   "additionalProperties": false,
   "required": ["caseId", "detectedSignals", "riskLevel", "recommendation"],
   "properties": {
     "caseId": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     },
     "detectedSignals": {
       "type": "array",
@@ -16,13 +18,16 @@
         "required": ["type", "ruleId", "label", "severity"],
         "properties": {
           "type": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           },
           "ruleId": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           },
           "label": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           },
           "severity": {
             "type": "string",

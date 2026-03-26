@@ -1,3 +1,5 @@
+import { createCloudSafeScanSummary } from "../../../packages/contracts/scan-summary-contract.js";
+
 export const createScanResult = ({
   caseId,
   detectedSignals,
@@ -11,14 +13,4 @@ export const createScanResult = ({
   scannedAt: new Date().toISOString()
 });
 
-export const toCloudSafeSummary = (scanResult) => ({
-  caseId: scanResult.caseId,
-  detectedSignals: scanResult.detectedSignals.map((signal) => ({
-    type: signal.type,
-    ruleId: signal.ruleId,
-    label: signal.label,
-    severity: signal.severity
-  })),
-  riskLevel: scanResult.riskLevel,
-  recommendation: scanResult.recommendation
-});
+export const toCloudSafeSummary = (scanResult) => createCloudSafeScanSummary(scanResult);

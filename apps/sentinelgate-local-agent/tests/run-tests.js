@@ -3,6 +3,11 @@ import app from "../app.js";
 import { scanText } from "../services/local-scanner.js";
 import { evaluateRisk } from "../services/risk-evaluator.js";
 import { resetScanDomainStore } from "../store/scan-case-store.js";
+import {
+  SUMMARY_REQUIRED_FIELDS,
+  SUMMARY_SIGNAL_FIELDS,
+  createCloudSafeScanSummary
+} from "../../../packages/contracts/scan-summary-contract.js";
 
 const run = async (name, fn) => {
   try {
@@ -45,6 +50,29 @@ await run("risk evaluator blocks when a high severity signal exists", async () =
     riskLevel: "HIGH",
     recommendation: "BLOCK"
   });
+});
+
+await run("cloudSafeSummary matches the shared contract fields", async () => {
+  const summary = createCloudSafeScanSummary({
+    caseId: "case-contract-1",
+    detectedSignals: [
+      {
+        type: "EMAIL_ADDRESS",
+        ruleId: "email-address",
+        label: "Email address",
+        severity: "LOW",
+        explanation: "local only detail",
+        matchPreview: "alice@example.com"
+      }
+    ],
+    riskLevel: "MEDIUM",
+    recommendation: "WARN"
+  });
+
+  assert.deepEqual(Object.keys(summary).sort(), [...SUMMARY_REQUIRED_FIELDS].sort());
+  assert.deepEqual(Object.keys(summary.detectedSignals[0]).sort(), [...SUMMARY_SIGNAL_FIELDS].sort());
+  assert.equal("rawText" in summary, false);
+  assert.equal("explanation" in summary.detectedSignals[0], false);
 });
 
 await run("scan-case API supports create and result flow", async () => {

@@ -9,7 +9,8 @@ This repository is organized as a minimal npm workspace monorepo. The current im
 - Early dual-service foundation / prototype
 - Runnable local agent service with explainable local scanning
 - Runnable cloud platform service that accepts only cloud-safe summaries
-- Shared contracts package for boundary-safe schemas and docs
+- Shared contracts package for boundary-safe schemas and small shared contract helpers
+- Demo-friendly end-to-end prototype flow from local scan summary to cloud record
 
 ## Monorepo Structure
 
@@ -29,19 +30,19 @@ This repository is organized as a minimal npm workspace monorepo. The current im
 - Express service for local-first processing
 - Handles raw text locally
 - Runs explainable rule-based scanning
-- Produces `cloudSafeSummary` shapes without raw text
+- Produces `cloudSafeSummary` payloads aligned to the shared contract
 
 ### `apps/sentinelgate-cloud-platform`
 
 - Express service for cloud-facing governance and reporting-safe records
-- Accepts only scan summary payloads
+- Accepts only scan summary payloads aligned to the shared contract
 - Stores accepted summary records in memory
 - Does not accept or store raw text
 
 ### `packages/contracts`
 
-- Shared JSON schemas and contract notes
-- Defines the summary boundary between local and cloud
+- Shared JSON schema and tiny JavaScript helpers for the summary boundary
+- Defines the cloud-safe shape used by both local and cloud
 - Reinforces that raw text must not be part of cloud-bound payloads
 
 ## Current Endpoints
@@ -67,7 +68,8 @@ This repository is organized as a minimal npm workspace monorepo. The current im
 
 - The repository currently uses JavaScript with Node.js and Express.
 - Both services are intentionally in-memory in this stage.
-- The project story is now: raw text stays local, cloud receives only safe summaries.
+- The project story is now: raw text stays local, local produces a contract-safe summary, cloud consumes only that summary.
+- A small demo helper script exists in the local agent to show the end-to-end summary flow against running services.
 
 ## Future Direction
 

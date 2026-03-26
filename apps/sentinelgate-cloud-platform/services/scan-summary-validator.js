@@ -1,6 +1,10 @@
-const FORBIDDEN_RAW_FIELDS = ["rawText", "rawContent", "content", "text"];
-const ALLOWED_RISK_LEVELS = ["LOW", "MEDIUM", "HIGH"];
-const ALLOWED_RECOMMENDATIONS = ["ALLOW", "WARN", "BLOCK"];
+import {
+  ALLOWED_RECOMMENDATIONS,
+  ALLOWED_RISK_LEVELS,
+  FORBIDDEN_RAW_FIELDS,
+  SUMMARY_REQUIRED_FIELDS,
+  SUMMARY_SIGNAL_FIELDS
+} from "../../../packages/contracts/scan-summary-contract.js";
 
 const createHttpError = (message, statusCode) => {
   const error = new Error(message);
@@ -10,9 +14,15 @@ const createHttpError = (message, statusCode) => {
 
 const isPlainObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 
+const hasOnlyFields = (value, allowedFields) =>
+  Object.keys(value).every((field) => allowedFields.includes(field));
+
 const validateDetectedSignal = (signal) => {
-  if (!isPlainObject(signal)) {
-    throw createHttpError("Each detected signal must be an object.", 400);
+  if (!isPlainObject(signal) || !hasOnlyFields(signal, SUMMARY_SIGNAL_FIELDS)) {
+    throw createHttpError(
+      "Each detected signal must only include type, ruleId, label, and severity.",
+      400
+    );
   }
 
   const { type, ruleId, label, severity } = signal;
@@ -28,7 +38,7 @@ const validateDetectedSignal = (signal) => {
       400
     );
   }
-}
+};
 
 export const validateScanSummaryPayload = (payload) => {
   if (!isPlainObject(payload)) {
@@ -39,6 +49,13 @@ export const validateScanSummaryPayload = (payload) => {
 
   if (hasRawField) {
     throw createHttpError("Raw text fields are not allowed in cloud-bound summary payloads.", 400);
+  }
+
+  if (!hasOnlyFields(payload, SUMMARY_REQUIRED_FIELDS)) {
+    throw createHttpError(
+      "Scan summary payload may only include caseId, detectedSignals, riskLevel, and recommendation.",
+      400
+    );
   }
 
   const { caseId, detectedSignals, riskLevel, recommendation } = payload;

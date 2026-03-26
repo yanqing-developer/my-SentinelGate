@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import app from "../app.js";
+import localApp from "../../sentinelgate-local-agent/app.js";
+import cloudApp from "../app.js";
+import { resetScanDomainStore } from "../../sentinelgate-local-agent/store/scan-case-store.js";
 import { resetScanSummaryStore } from "../store/scan-summary-store.js";
 
 const run = async (name, fn) => {
@@ -12,11 +14,11 @@ const run = async (name, fn) => {
   }
 };
 
-const createServer = () => app.listen(0);
+const createServer = (app) => app.listen(0);
 
 await run("happy-path ingestion stores a summary record", async () => {
   resetScanSummaryStore();
-  const server = createServer();
+  const server = createServer(cloudApp);
   const { port } = server.address();
   const baseUrl = `http://127.0.0.1:${port}`;
 
@@ -53,7 +55,7 @@ await run("happy-path ingestion stores a summary record", async () => {
 
 await run("ingestion rejects raw text fields", async () => {
   resetScanSummaryStore();
-  const server = createServer();
+  const server = createServer(cloudApp);
   const { port } = server.address();
   const baseUrl = `http://127.0.0.1:${port}`;
 
@@ -82,7 +84,7 @@ await run("ingestion rejects raw text fields", async () => {
 
 await run("list and read APIs return stored records", async () => {
   resetScanSummaryStore();
-  const server = createServer();
+  const server = createServer(cloudApp);
   const { port } = server.address();
   const baseUrl = `http://127.0.0.1:${port}`;
 
@@ -122,6 +124,54 @@ await run("list and read APIs return stored records", async () => {
     assert.equal(getPayload.record.caseId, "case-list-1");
   } finally {
     await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+await run("end-to-end flow moves a local cloudSafeSummary into cloud storage", async () => {
+  resetScanDomainStore();
+  resetScanSummaryStore();
+  const localServer = createServer(localApp);
+  const cloudServer = createServer(cloudApp);
+  const localBaseUrl = `http://127.0.0.1:${localServer.address().port}`;
+  const cloudBaseUrl = `http://127.0.0.1:${cloudServer.address().port}`;
+
+  try {
+    const localResponse = await fetch(`${localBaseUrl}/api/scan-cases`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        rawText: "Confidential salary review for passport holder jane@example.com 123456789",
+        immediateScan: true
+      })
+    });
+
+    const localPayload = await localResponse.json();
+    assert.equal("rawText" in localPayload.cloudSafeSummary, false);
+
+    const cloudCreateResponse = await fetch(`${cloudBaseUrl}/api/scan-summaries`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(localPayload.cloudSafeSummary)
+    });
+
+    assert.equal(cloudCreateResponse.status, 202);
+    const cloudCreatePayload = await cloudCreateResponse.json();
+
+    const cloudReadResponse = await fetch(
+      `${cloudBaseUrl}/api/scan-summaries/${cloudCreatePayload.record.id}`
+    );
+    const cloudReadPayload = await cloudReadResponse.json();
+
+    assert.equal(cloudReadPayload.record.caseId, localPayload.scanCase.id);
+    assert.equal(cloudReadPayload.record.riskLevel, localPayload.cloudSafeSummary.riskLevel);
+    assert.equal("rawText" in cloudReadPayload.record, false);
+  } finally {
+    await new Promise((resolve) => localServer.close(resolve));
+    await new Promise((resolve) => cloudServer.close(resolve));
   }
 });
 
