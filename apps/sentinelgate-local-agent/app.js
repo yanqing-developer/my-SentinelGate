@@ -2,6 +2,8 @@ import express from "express";
 import scanCaseRouter from "./routes/scan-case-routes.js";
 import jobRouter from "./routes/job-routes.js";
 import { requestContextMiddleware } from "./middleware/request-context.js";
+import { notFoundMiddleware } from "./middleware/not-found.js";
+import { errorHandlerMiddleware } from "./middleware/error-handler.js";
 
 const app = express();
 
@@ -18,5 +20,8 @@ app.get("/api/health", (req, res) => {
     service: "sentinelgate-local-agent"
   });
 });
+
+app.use(notFoundMiddleware);
+app.use(errorHandlerMiddleware);
 
 export default app;

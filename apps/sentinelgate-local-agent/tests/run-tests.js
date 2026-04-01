@@ -19,6 +19,13 @@ const run = async (name, fn) => {
   }
 };
 
+const startServer = async (expressApp) =>
+  new Promise((resolve) => {
+    const server = expressApp.listen(0, () => {
+      resolve(server);
+    });
+  });
+
 await run("scanner detects email addresses", async () => {
   const signals = scanText("Contact alice@example.com before release.");
   const emailSignal = signals.find((signal) => signal.ruleId === "email-address");
@@ -77,7 +84,7 @@ await run("cloudSafeSummary matches the shared contract fields", async () => {
 
 await run("local-agent sets and preserves correlation headers", async () => {
   resetScanDomainStore();
-  const server = app.listen(0);
+  const server = await startServer(app);
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
 
   try {
@@ -102,10 +109,61 @@ await run("local-agent sets and preserves correlation headers", async () => {
   }
 });
 
+await run("local-agent validation errors use centralized error shape", async () => {
+  resetScanDomainStore();
+  const server = await startServer(app);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  const correlationId = "local-error-123";
+
+  try {
+    const response = await fetch(`${baseUrl}/api/scan-cases`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-correlation-id": correlationId
+      },
+      body: JSON.stringify({
+        immediateScan: true
+      })
+    });
+
+    assert.equal(response.status, 400);
+    assert.equal(response.headers.get("x-correlation-id"), correlationId);
+
+    const payload = await response.json();
+    assert.deepEqual(payload, {
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "rawText is required.",
+        requestId: correlationId
+      }
+    });
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+await run("local-agent not found uses centralized error shape", async () => {
+  const server = await startServer(app);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const response = await fetch(`${baseUrl}/api/does-not-exist`);
+    assert.equal(response.status, 404);
+
+    const payload = await response.json();
+    assert.equal(payload.error.code, "NOT_FOUND");
+    assert.equal(payload.error.message, "Route not found.");
+    assert.ok(payload.error.requestId);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
 await run("scan-case API supports create and result flow", async () => {
   resetScanDomainStore();
 
-  const server = app.listen(0);
+  const server = await startServer(app);
   const address = server.address();
   const baseUrl = `http://127.0.0.1:${address.port}`;
 

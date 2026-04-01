@@ -11,14 +11,9 @@ import {
   assertScanCaseTransition,
   SCANCASESTATUS
 } from "../utils/scan-case-status.js";
+import { createHttpError } from "../utils/http-error.js";
 import { scanText } from "./local-scanner.js";
 import { evaluateRisk } from "./risk-evaluator.js";
-
-const createHttpError = (message, statusCode) => {
-  const error = new Error(message);
-  error.statusCode = statusCode;
-  return error;
-};
 
 const markScanCaseStatus = (scanCase, nextStatus) => ({
   ...scanCase,
@@ -68,7 +63,7 @@ export const getLocalScanCase = (caseId) => {
   const scanCase = getScanCaseById(caseId);
 
   if (!scanCase) {
-    throw createHttpError("Scan case not found.", 404);
+    throw createHttpError(404, "NOT_FOUND", "Scan case not found.");
   }
 
   return toPublicScanCase(scanCase);
@@ -78,13 +73,13 @@ export const getLocalScanResult = (caseId, requestContext) => {
   const scanCase = getScanCaseById(caseId);
 
   if (!scanCase) {
-    throw createHttpError("Scan case not found.", 404);
+    throw createHttpError(404, "NOT_FOUND", "Scan case not found.");
   }
 
   const scanResult = getScanResultByCaseId(caseId);
 
   if (!scanResult) {
-    throw createHttpError("Scan result not found for this case.", 404);
+    throw createHttpError(404, "NOT_FOUND", "Scan result not found for this case.");
   }
 
   return {
@@ -97,11 +92,11 @@ export const scanExistingCase = (caseId, requestContext) => {
   const scanCase = getScanCaseById(caseId);
 
   if (!scanCase) {
-    throw createHttpError("Scan case not found.", 404);
+    throw createHttpError(404, "NOT_FOUND", "Scan case not found.");
   }
 
   if (scanCase.status !== SCANCASESTATUS.DRAFT) {
-    throw createHttpError("Scan case can only be scanned from DRAFT state.", 400);
+    throw createHttpError(400, "INVALID_STATE", "Scan case can only be scanned from DRAFT state.");
   }
 
   requestContext?.logger?.info("scan.started", {

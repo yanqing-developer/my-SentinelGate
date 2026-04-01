@@ -6,12 +6,7 @@ import {
   saveScanSummaryRecord
 } from "../store/scan-summary-store.js";
 import { validateScanSummaryPayload } from "./scan-summary-validator.js";
-
-const createHttpError = (message, statusCode) => {
-  const error = new Error(message);
-  error.statusCode = statusCode;
-  return error;
-};
+import { createHttpError } from "../utils/http-error.js";
 
 export const ingestScanSummary = (payload, requestContext) => {
   const validatedPayload = validateScanSummaryPayload(payload);
@@ -32,7 +27,7 @@ export const getStoredScanSummary = (recordId) => {
   const record = getScanSummaryRecordById(recordId);
 
   if (!record) {
-    throw createHttpError("Scan summary record not found.", 404);
+    throw createHttpError(404, "NOT_FOUND", "Scan summary record not found.");
   }
 
   return record;
