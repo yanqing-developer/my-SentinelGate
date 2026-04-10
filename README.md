@@ -1,238 +1,199 @@
 # SentinelGate
 
-**Privacy-First Pre-Upload Risk Analysis System**  
-Local/Cloud Separation - Async Job Processing - Strict State Machine - Contract-Driven Design
+**Privacy-first local scanning before data leaves a trusted environment.**
 
-Built with:
-- Cloud: Go
-- Local: TypeScript (Node.js)
+SentinelGate is a backend-focused prototype that demonstrates how to detect potentially sensitive content locally, convert the result into a cloud-safe summary, and send only that summary to a cloud-side service for governance and reporting-safe workflows.
 
----
+It is intentionally small, but it is built to tell a clear engineering story about service boundaries, explainable detection, safe cloud ingestion, observability, and persistence tradeoffs.
 
-## Overview
+## Why SentinelGate Exists
 
-SentinelGate models a real enterprise requirement:
+Organizations increasingly need to review text before it is sent to external systems such as SaaS tools, cloud storage, third-party APIs, or AI services.
 
-Before uploading internal documents or content to external systems (cloud storage, SaaS platforms, AI tools, or third-party services), organizations must assess whether the data contains sensitive information.
+The core problem is not just classification accuracy. It is architectural trust:
 
-This project demonstrates a privacy-preserving backend architecture for:
+- raw text may contain sensitive data that must remain inside a trusted boundary
+- cloud systems may still need safe summary data for audit, reporting, or workflow coordination
+- teams need simple, explainable behavior rather than opaque black-box scanning
 
-- Pre-upload risk assessment
-- Strict data boundary enforcement
-- Asynchronous analysis workflows
-- Contract-driven API design
+SentinelGate models that split explicitly.
 
-The focus is architectural correctness and production realism rather than feature volume.
+## Core Architecture
 
----
-
-## Real-World Motivation
-
-Enterprises face increasing risks when sharing data externally:
-
-- Accidental leakage of personal identifiers
-- Exposure of confidential business information
-- Compliance violations (GDPR and internal governance policies)
-- Uncontrolled use of AI tools with sensitive data
-
-A safe workflow requires:
-
-1. Sensitive data to remain inside a trusted boundary
-2. External analysis services to operate without raw data access
-3. Non-blocking background processing
-4. Deterministic and auditable state transitions
-
-SentinelGate models this architecture in a minimal but production-minded way.
-
----
-
-## System Architecture
-
-Client  
-↓  
-Local Service (TypeScript / Node.js)  
-↓  
-Sends only non-sensitive signals  
-↓  
-Cloud Service (Go)
-
----
-
-### Local Service
-
-Responsibilities:
-
-- Stores sensitive case data
-- Extracts non-sensitive risk signals
-- Initiates analysis jobs in the Cloud
-- Maintains case-to-job mapping
-- Aggregates job status for clients
-
-Sensitive content never leaves this service.
-
-Examples of data stored locally:
-
-- rawContent
-- subjectName
-- email
-- internalNotes
-- file references
-
----
-
-### Cloud Service
-
-Responsibilities:
-
-- Executes long-running risk analysis jobs
-- Applies scoring rules to non-sensitive signals
-- Manages job lifecycle state
-- Returns structured risk summaries
-
-Cloud receives only:
-
-- caseId
-- Derived signal indicators
-- Non-sensitive metadata
-
-Cloud never receives raw content.
-
-The Cloud layer is implemented in Go to reflect production-oriented backend design where:
-
-- Concurrency and background execution matter
-- Explicit error handling is preferred
-- Job lifecycle management must be deterministic
-
----
+```text
+User / internal system
+        |
+        v
+sentinelgate-local-agent
+- receives raw text
+- scans locally
+- produces explainable signals
+- decides ALLOW / WARN / BLOCK
+- builds cloudSafeSummary
+        |
+        |  only summary-safe payloads
+        v
+sentinelgate-cloud-platform
+- accepts scan summaries
+- stores summary-safe records
+- exposes governance/reporting-safe read APIs
+        ^
+        |
+packages/contracts
+- shared boundary-safe summary contract
+```
 
 ## Privacy Boundary
 
-The system enforces a strict trust separation.
+This is the most important design rule in the repository.
 
-Cloud must never accept or return:
+`sentinelgate-local-agent` is the only service allowed to handle raw text.
 
-- rawContent
-- subjectName
-- email
-- fileName
-- filePath
-- internalNotes
-- Any personally identifiable or business-sensitive field
+`sentinelgate-cloud-platform` persists and serves only summary-safe data such as:
 
-Cloud only processes:
+- `caseId`
+- summarized `detectedSignals`
+- `riskLevel`
+- `recommendation`
+- metadata such as `source` and `receivedAt`
 
-- caseId
-- Derived risk signals
-- Job status
-- Risk score
-- Risk level
-- Structured summary
+Cloud-side code does **not** accept or store:
 
-This boundary is architectural and encoded in JSON schema definitions.
+- `rawText`
+- `rawContent`
+- full source content
+- detailed local-only scan context
 
----
+That boundary is reinforced by shared contracts in [packages/contracts](D:/Projects/code/my-SentinelGate/packages/contracts).
 
-## Risk Analysis Model (Simplified)
+## Current Implemented Capabilities
 
-Each job produces a structured, non-sensitive result:
+The current repository already demonstrates:
 
-- riskScore (0–100)
-- riskLevel (LOW - MEDIUM - HIGH)
-- detectedSignals (e.g. EMAIL_PATTERN, NUMERIC_ID_PATTERN)
-- recommendation (e.g. "Mask identifiers before upload")
+- local-only raw text scanning in [apps/sentinelgate-local-agent](D:/Projects/code/my-SentinelGate/apps/sentinelgate-local-agent)
+- explainable rule-based detection for patterns such as email, phone numbers, long numeric identifiers, and sensitive keywords
+- deterministic risk decisions: `LOW / MEDIUM / HIGH` and `ALLOW / WARN / BLOCK`
+- generation of `cloudSafeSummary` payloads aligned to shared contracts
+- cloud-side ingestion and read APIs in [apps/sentinelgate-cloud-platform](D:/Projects/code/my-SentinelGate/apps/sentinelgate-cloud-platform)
+- SQLite-backed persistence for cloud summary records
+- structured logs with request/correlation IDs in both services
+- centralized error handling with consistent JSON error responses
+- GitHub Actions CI that runs automated tests for both services
 
-The scoring logic is intentionally simple to keep the focus on system architecture rather than machine learning complexity.
+This is still an early prototype. It is not presented as production-ready.
 
----
+## End-to-End Flow
 
-## Job Lifecycle
+The implemented flow is:
 
-All jobs follow a strict state machine:
-
-PENDING → RUNNING → DONE  
-                 ↘ FAILED  
-
-Invalid transitions are rejected.
-
-Examples of illegal transitions:
-
-- DONE → RUNNING
-- FAILED → RUNNING
-- DONE → PENDING
-
-This models production-grade background processing integrity.
-
----
-
-## Async Processing Model
-
-SentinelGate uses a pull-based polling mechanism:
-
-1. POST /jobs → returns jobId
-2. GET /jobs/:jobId → retrieve job status
-
-Design choices:
-
-- No blocking HTTP requests
-- No long-running synchronous endpoints
-- Clear separation between submission and retrieval
-
----
-
-## Contract-Driven Development
-
-All external responses are defined using JSON Schema.
-
-Design principles:
-
-- additionalProperties: false
-- Explicit required fields
-- Enum-based constraints
-- Structured error responses
-- Privacy boundary encoded in structure
-
-Schemas are stored in `/contracts`.
-
----
+1. Raw text is submitted to `sentinelgate-local-agent`
+2. The local agent scans the text and produces explainable signals
+3. The local agent computes a deterministic risk decision
+4. The local agent builds a contract-safe summary that excludes raw text
+5. The summary is sent to `sentinelgate-cloud-platform`
+6. The cloud platform persists only the summary-safe record and exposes read APIs
 
 ## Repository Structure
 
+```text
 .
-├── cloud/       - Go service (risk engine + job manager)
-├── local/       - TypeScript service (sensitive boundary)
-├── contracts/   - Shared JSON schemas
-└── README.md
+├── apps/
+│   ├── sentinelgate-local-agent/
+│   └── sentinelgate-cloud-platform/
+└── packages/
+    └── contracts/
+```
 
----
+## How to Run
 
-## Technical Highlights
+Install dependencies:
 
-- Explicit Local/Cloud trust separation
-- Zero raw data leakage to Cloud
-- Asynchronous background job processing
-- Strict state machine enforcement
-- Centralized error contract
-- Privacy boundary encoded in schema
-- Minimal but production-minded structure
+```bash
+npm install
+```
 
----
+Start the local agent:
 
-## Future Improvements
+```bash
+npm run dev:local
+```
 
-Potential extensions include:
+Start the cloud platform:
 
-- Persistent storage
-- Authentication and authorization
-- Message queues (Kafka or SQS)
-- Idempotent job submission
-- Observability (metrics and tracing)
-- Rate limiting
-- Audit logging
+```bash
+npm run dev:cloud
+```
 
----
+## How to Demo
 
-## Purpose
+1. Install dependencies:
 
-SentinelGate is built as an interview-ready backend engineering demonstration.
+```bash
+npm install
+```
 
-It highlights architectural reasoning, privacy awareness, and system modeling over UI or feature breadth.
+2. In one terminal, start the local agent:
+
+```bash
+npm run dev:local
+```
+
+3. In a second terminal, start the cloud platform:
+
+```bash
+npm run dev:cloud
+```
+
+4. In a third terminal, run the end-to-end demo helper:
+
+```bash
+npm run demo:send-summary --workspace sentinelgate-local-agent
+```
+
+The demo helper will:
+
+- create and scan a local case
+- build a cloud-safe summary
+- send the summary to the cloud platform
+- read the stored cloud record back
+- print the result with a correlation ID
+
+Run tests:
+
+```bash
+npm run test --workspace sentinelgate-local-agent
+npm run test --workspace sentinelgate-cloud-platform
+```
+
+## CI, Observability, and Persistence Notes
+
+The repository includes a few reliability-minded basics without pretending to be a full platform yet.
+
+- CI: GitHub Actions runs automated tests for both services on push and pull request
+- Observability: both services emit structured logs with `x-request-id` / `x-correlation-id`
+- Error handling: both services use centralized Express error middleware with consistent JSON responses
+- Persistence: cloud summary records are stored in a minimal SQLite database; local raw text is not persisted to cloud
+
+## Why This Project Is Useful for Backend / Platform Engineering
+
+SentinelGate is useful as a portfolio project because it demonstrates several backend engineering themes in a compact, reviewable codebase:
+
+- privacy-first system design
+- explicit trust boundaries between services
+- explainable, deterministic business logic
+- safe cloud ingestion patterns
+- lightweight observability and request correlation
+- centralized error handling and CI discipline
+- simple persistence tradeoffs instead of premature platform complexity
+
+## Future Roadmap
+
+Reasonable next steps for the project include:
+
+- policy versioning for scanner behavior and governance rules
+- richer cloud-side audit workflows and record views
+- stronger persistence modeling and query patterns
+- real external monitoring integration behind the existing monitoring seam
+- deployment automation and environment packaging
+
+Those are future extensions, not current features.
